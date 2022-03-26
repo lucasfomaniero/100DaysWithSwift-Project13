@@ -9,9 +9,15 @@ import UIKit
 import CoreImage
 
 
+
+
 class ViewController: UIViewController {
-    var currentImage: UIImage!
-    var photoFilter: PhotoFilter = PhotoFilter()
+    var currentImage: UIImage! {
+        didSet {
+            photoFilter.currentImage = currentImage
+        }
+    }
+    var photoFilter: PhotoFilter = PhotoFilter(.sepia)
 
     let containerView: UIView = {
         let cv = UIView()
@@ -72,7 +78,22 @@ class ViewController: UIViewController {
     
     
     @objc func save() {
-        print("Save tapped")
+        guard let image = imageView.image else { return }
+
+        UIImageWriteToSavedPhotosAlbum(image, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+    }
+    
+    @objc func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+        if let error = error {
+            // we got back an error!
+            let ac = UIAlertController(title: "Save error", message: error.localizedDescription, preferredStyle: .alert)
+            ac.addAction(UIAlertAction(title: "OK", style: .default))
+            present(ac, animated: true)
+        } else {
+            let ac = UIAlertController(title: "Saved!", message: "Your altered image has been saved to your photos.", preferredStyle: .alert)
+            ac.addAction(UIAlertAction(title: "OK", style: .default))
+            present(ac, animated: true)
+        }
     }
     
     @objc func changeFilter() {
@@ -87,33 +108,22 @@ class ViewController: UIViewController {
     }
     func setFilter(action: UIAlertAction) {
         // make sure we have a valid image before continuing!
-        guard currentImage != nil else { return }
+        
+        guard let image =  photoFilter.currentImage else { return }
 
         // safely read the alert action's title
         guard let actionTitle = action.title else { return }
         
         photoFilter.currentFilter = CIFilter(name: actionTitle)
-//        currentFilter = CIFilter(name: actionTitle)
 
-        let beginImage = CIImage(image: currentImage)
+        let beginImage = CIImage(image: image)
         photoFilter.currentFilter.setValue(beginImage, forKey: kCIInputImageKey)
 
         applyProcessing()
     }
     
     func applyProcessing() {
-        let inputKeys = photoFilter.currentFilter.inputKeys
-        let intensity = photoFilter.intensity
-
-        if inputKeys.contains(kCIInputIntensityKey) { photoFilter.currentFilter.setValue(intensity, forKey: kCIInputIntensityKey) }
-        if inputKeys.contains(kCIInputRadiusKey) { photoFilter.currentFilter.setValue(intensity * 200, forKey: kCIInputRadiusKey) }
-        if inputKeys.contains(kCIInputScaleKey) { photoFilter.currentFilter.setValue(intensity * 10, forKey: kCIInputScaleKey) }
-        if inputKeys.contains(kCIInputCenterKey) { photoFilter.currentFilter.setValue(CIVector(x: currentImage.size.width / 2, y: currentImage.size.height / 2), forKey: kCIInputCenterKey) }
-        
-        if let image = photoFilter.currentFilter.outputImage, let cgimg = photoFilter.context.createCGImage(image, from: image.extent) {
-            let processedImage = UIImage(cgImage: cgimg)
-            self.imageView.image = processedImage
-        }
+        self.imageView.image = photoFilter.processedImage
     }
     @objc func intensityChanged() {
         photoFilter.intensity = Double(slider.value)
@@ -122,7 +132,6 @@ class ViewController: UIViewController {
     
     func setupButtons() {
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(importPicture))
-        
     }
     
     @objc func importPicture() {
@@ -174,13 +183,14 @@ class ViewController: UIViewController {
 
 extension ViewController: UIImagePickerControllerDelegate & UINavigationControllerDelegate{
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        guard let image = info[.editedImage] as? UIImage else {return}
+        guard let image = info[.editedImage] as? UIImage else { return }
+        
+        dismiss(animated: true)
+        
         currentImage = image
-        imageView.image = currentImage
+        
         let beginImage = CIImage(image: currentImage)
         photoFilter.currentFilter.setValue(beginImage, forKey: kCIInputImageKey)
         applyProcessing()
-
-        self.dismiss(animated: true, completion: nil)
     }
 }

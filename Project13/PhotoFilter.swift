@@ -15,9 +15,7 @@ struct PhotoFilter {
     var currentImage: UIImage?
     
     var processedImage: UIImage? {
-        guard let currentImage = currentImage else {
-            return nil
-        }
+        guard let currentImage = currentImage else { return nil}
 
         let inputKeys = currentFilter.inputKeys
 
@@ -36,6 +34,12 @@ struct PhotoFilter {
     init(_ filter: FilterType = .sepia) {
         context = CIContext()
         currentFilter = CIFilter(name: filter.name)
+    }
+    mutating func applyFilter(with name: String) -> Void {
+        guard let image =  self.currentImage else { return }
+        self.currentFilter = CIFilter(name: name)
+        let beginImage = CIImage(image: image)
+        currentFilter.setValue(beginImage, forKey: kCIInputImageKey)
     }
     
     public enum FilterType: String, CaseIterable {

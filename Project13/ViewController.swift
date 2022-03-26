@@ -107,18 +107,8 @@ class ViewController: UIViewController {
         present(ac, animated: true)
     }
     func setFilter(action: UIAlertAction) {
-        // make sure we have a valid image before continuing!
-        
-        guard let image =  photoFilter.currentImage else { return }
-
-        // safely read the alert action's title
-        guard let actionTitle = action.title else { return }
-        
-        photoFilter.currentFilter = CIFilter(name: actionTitle)
-
-        let beginImage = CIImage(image: image)
-        photoFilter.currentFilter.setValue(beginImage, forKey: kCIInputImageKey)
-
+        guard let filterName = action.title else { return }
+        photoFilter.applyFilter(with: filterName)
         applyProcessing()
     }
     
